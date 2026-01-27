@@ -16,10 +16,15 @@ function App() {
   const [view, setView] = useState<'week' | 'list'>('week');
 
   const activeTasks = tasks.filter(t => !t.completed);
+  // Recurring tasks are always "active" in the sense they appear in the schedule
+  // but we might want to filter out completed instances if needed.
+  // For now, simple logic:
+  
   const completedTasks = tasks.filter(t => t.completed);
   
-  const unscheduledTasks = activeTasks.filter(t => !t.dueDate);
-  const scheduledTasks = activeTasks.filter(t => t.dueDate);
+  const unscheduledTasks = activeTasks.filter(t => !t.dueDate && !t.recurrence);
+  // Scheduled includes both one-time tasks with due dates AND recurring tasks
+  const scheduledTasks = tasks.filter(t => (t.dueDate || t.recurrence) && !t.completed);
 
   // Sort unscheduled by priority
   unscheduledTasks.sort((a, b) => {

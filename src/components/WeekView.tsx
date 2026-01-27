@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
 import { type Task } from '../types';
 import { TaskCard } from './TaskCard';
-import { format, isSameDay, startOfWeek, addDays, parseISO, isValid } from 'date-fns';
+import { format, isSameDay, startOfWeek, addDays, parseISO, isValid, getDay } from 'date-fns';
 import { cn } from '../lib/utils';
 
 interface TaskListProps {
   tasks: Task[];
-  onToggle: (id: string) => void;
+  onToggle: (id: string, dateStr?: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
 }
@@ -25,6 +25,7 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
         label: format(date, 'EEE'),
         fullDate: format(date, 'MMM d'),
         isToday: isSameDay(date, today),
+        dayIndex: getDay(date), // 0-6 (Sun-Sat)
       };
     });
   }, [startOfCurrentWeek, today]);
@@ -39,7 +40,8 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
 
     // Add tasks to corresponding days
     tasks.forEach(task => {
-      if (task.dueDate && !task.completed) {
+      // 1. Handle One-time Tasks with Due Date
+      if (task.dueDate && !task.recurrence && !task.completed) {
         const dueDate = parseISO(task.dueDate);
         if (isValid(dueDate)) {
           const key = dueDate.toDateString();
@@ -47,6 +49,34 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
             map.get(key)?.push(task);
           }
         }
+      }
+
+      // 2. Handle Recurring Tasks
+      if (task.recurrence) {
+        weekDays.forEach(day => {
+          // Check if this task recurs on this day of the week
+          if (task.recurrence!.days.includes(day.dayIndex)) {
+             // For recurring tasks, we create a "virtual" instance
+             // We need to know if it's completed FOR THIS DAY
+             const dateStr = format(day.date, 'yyyy-MM-dd');
+             const isCompletedForDay = task.completions?.includes(dateStr);
+             
+             // Create a copy with the specific status for this day
+             // We only show it if it's NOT completed, or we could show completed too
+             // The user asked for "completed tasks go somewhere else", so usually we hide them.
+             // But for recurring, if I complete it today, it should disappear from Today?
+             // Or fade out? Let's hide it if completed to match existing logic.
+             if (!isCompletedForDay) {
+               const instanceTask = {
+                 ...task,
+                 // We don't change the ID, but we pass the date to the toggle handler
+                 _virtualDate: dateStr 
+               };
+               const key = day.date.toDateString();
+               map.get(key)?.push(instanceTask as Task);
+             }
+          }
+        });
       }
     });
 
@@ -79,13 +109,14 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
             </div>
 
             <div className="flex flex-col gap-2 flex-1">
-              {dayTasks.map(task => (
+              {dayTasks.map((task: any) => (
                 <TaskCard
-                  key={task.id}
+                  key={`${task.id}-${task._virtualDate || 'single'}`}
                   task={task}
-                  onToggle={onToggle}
+                  onToggle={(id) => onToggle(id, task._virtualDate)}
                   onDelete={onDelete}
                   onEdit={onEdit}
+                  isRecurringInstance={!!task._virtualDate}
                 />
               ))}
               {dayTasks.length === 0 && (
