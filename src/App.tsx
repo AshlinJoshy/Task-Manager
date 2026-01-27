@@ -16,14 +16,9 @@ function App() {
   const [view, setView] = useState<'week' | 'list'>('week');
 
   const activeTasks = tasks.filter(t => !t.completed);
-  // Recurring tasks are always "active" in the sense they appear in the schedule
-  // but we might want to filter out completed instances if needed.
-  // For now, simple logic:
-  
   const completedTasks = tasks.filter(t => t.completed);
   
   const unscheduledTasks = activeTasks.filter(t => !t.dueDate && !t.recurrence);
-  // Scheduled includes both one-time tasks with due dates AND recurring tasks
   const scheduledTasks = tasks.filter(t => (t.dueDate || t.recurrence) && !t.completed);
 
   // Sort unscheduled by priority
@@ -52,15 +47,28 @@ function App() {
     setEditingTask(null);
   };
 
+  const handleTaskMove = (taskId: string, newDate: Date) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task && !task.recurrence) {
+      // Adjust date to preserve time or just set to date part?
+      // Our dates are usually YYYY-MM-DD strings or ISO.
+      // The current system uses strings effectively as dates.
+      // Let's assume newDate is set to the correct day.
+      const dateStr = newDate.toISOString();
+      updateTask(taskId, { dueDate: dateStr });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="bg-blue-600 text-white p-1.5 rounded-lg">
               <CheckSquare size={20} strokeWidth={2.5} />
             </div>
-            <h1 className="text-xl font-bold text-gray-900">Task Manager</h1>
+            <h1 className="text-xl font-bold text-gray-900 hidden sm:block">Task Manager</h1>
+            <h1 className="text-xl font-bold text-gray-900 sm:hidden">Tasks</h1>
           </div>
           
           <div className="flex items-center gap-3">
@@ -72,7 +80,7 @@ function App() {
                   view === 'week' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
                 )}
               >
-                <LayoutGrid size={16} /> Week
+                <LayoutGrid size={16} /> <span className="hidden sm:inline">Week</span>
               </button>
               <button
                 onClick={() => setView('list')}
@@ -81,22 +89,22 @@ function App() {
                   view === 'list' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
                 )}
               >
-                <List size={16} /> List
+                <List size={16} /> <span className="hidden sm:inline">List</span>
               </button>
             </div>
             
-            <Button onClick={() => { setEditingTask(null); setIsFormOpen(true); }} className="gap-2">
+            <Button onClick={() => { setEditingTask(null); setIsFormOpen(true); }} className="gap-2 hidden sm:flex">
               <Plus size={18} /> New Task
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 h-[calc(100vh-8rem)]">
+      <main className="flex-1 w-full px-4 py-4 sm:py-6 overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-8rem)]">
           
           {/* Main Content Area */}
-          <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden">
+          <div className="flex-1 flex flex-col gap-6 overflow-hidden min-w-0">
             {view === 'week' ? (
               <ScrollArea className="flex-1 pb-4">
                  <WeekView 
@@ -104,6 +112,7 @@ function App() {
                   onToggle={toggleTask}
                   onDelete={deleteTask}
                   onEdit={handleEdit}
+                  onTaskMove={handleTaskMove}
                 />
               </ScrollArea>
             ) : (
@@ -128,8 +137,8 @@ function App() {
             )}
           </div>
 
-          {/* Sidebar */}
-          <div className="flex flex-col gap-6 overflow-hidden">
+          {/* Sidebar - Collapsible or stacked on mobile */}
+          <div className="hidden lg:flex flex-col gap-6 w-80 shrink-0 overflow-hidden">
              
             {/* Unscheduled Tasks */}
             <div className="flex flex-col gap-3 min-h-[300px] flex-1">
@@ -194,6 +203,14 @@ function App() {
           </div>
         </div>
       </main>
+
+      {/* Mobile FAB */}
+      <button
+        onClick={() => { setEditingTask(null); setIsFormOpen(true); }}
+        className="fixed bottom-6 right-6 h-14 w-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center sm:hidden hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 z-20"
+      >
+        <Plus size={24} />
+      </button>
 
       {/* Modal Overlay */}
       {isFormOpen && (
