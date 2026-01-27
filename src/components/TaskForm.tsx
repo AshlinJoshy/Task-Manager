@@ -5,7 +5,7 @@ import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { X, Repeat } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { useTasks } from '../hooks/useTasks';
+import { ProjectSelect } from './ui/ProjectSelect';
 
 interface TaskFormProps {
   initialData?: Task;
@@ -24,7 +24,6 @@ const DAYS = [
 ];
 
 export const TaskForm: React.FC<TaskFormProps> = ({ initialData, onSubmit, onCancel }) => {
-  const { projects, addProject } = useTasks();
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [priority, setPriority] = useState<Priority>(initialData?.priority || 'Medium');
@@ -38,10 +37,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialData, onSubmit, onCan
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Add project if it's new (handled by hook, but good for UX to ensure)
-    if (projectName && !projects.includes(projectName)) {
-      addProject(projectName);
-    }
+    // Project management is handled by the Select component now
 
     const data: any = {
       title,
@@ -127,19 +123,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialData, onSubmit, onCan
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
-            <div className="relative">
-              <Input
-                list="projects-list"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="Select or type..."
-              />
-              <datalist id="projects-list">
-                {projects.map((p) => (
-                  <option key={p} value={p} />
-                ))}
-              </datalist>
-            </div>
+            <ProjectSelect 
+              value={projectName} 
+              onChange={setProjectName} 
+            />
           </div>
         </div>
 

@@ -3,16 +3,15 @@ import { type Task } from '../types';
 import { TaskCard } from './TaskCard';
 import { format, isSameDay, startOfWeek, addDays, parseISO, isValid, getDay } from 'date-fns';
 import { cn } from '../lib/utils';
-import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { createPortal } from 'react-dom';
 
 interface TaskListProps {
   tasks: Task[];
   onToggle: (id: string, dateStr?: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
-  onTaskMove: (id: string, date: Date) => void;
+  // onTaskMove handled by parent DndContext now
 }
 
 const DAYS_OF_WEEK = 7;
@@ -42,6 +41,7 @@ const DraggableTask = ({ task, children }: { task: Task; children: React.ReactNo
 const DroppableDay = ({ dateStr, children, isToday }: { dateStr: string; children: React.ReactNode; isToday: boolean }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: dateStr,
+    data: { type: 'day', dateStr },
   });
 
   return (
@@ -58,24 +58,9 @@ const DroppableDay = ({ dateStr, children, isToday }: { dateStr: string; childre
   );
 };
 
-export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, onEdit, onTaskMove }) => {
+export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, onEdit }) => {
   const today = new Date();
   const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday start
-
-  // Sensors for better touch/mouse handling
-  const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 8, // Require 8px movement before drag starts to prevent accidental drags on click
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250, // Slight delay for touch to differentiate from scroll
-        tolerance: 5,
-      },
-    })
-  );
 
   const weekDays = useMemo(() => {
     return Array.from({ length: DAYS_OF_WEEK }).map((_, i) => {
@@ -135,101 +120,60 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
     return map;
   }, [tasks, weekDays]);
 
-  const [activeTask, setActiveTask] = React.useState<Task | null>(null);
-
-  const handleDragStart = (event: any) => {
-    setActiveTask(event.active.data.current?.task);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveTask(null);
-
-    if (over && active.id !== over.id) {
-      // over.id is the dateStr of the dropped column
-      // active.id is the task id
-      const newDateStr = over.id as string;
-      const newDate = parseISO(newDateStr);
-      
-      if (isValid(newDate)) {
-        onTaskMove(active.id as string, newDate);
-      }
-    }
-  };
-
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="grid grid-cols-1 md:grid-cols-7 gap-4 h-full min-w-[300px]"> 
-        {/* Adjusted min-w to prevent breaking on very small screens, but scrolling might be handled by parent */}
-        {weekDays.map((day) => {
-          const dayTasks = tasksByDate.get(day.date.toDateString()) || [];
-          dayTasks.sort((a, b) => {
-            const priorities = { Constant: 0, High: 1, Medium: 2, Low: 3 };
-            return priorities[a.priority] - priorities[b.priority];
-          });
+    <div className="grid grid-cols-1 md:grid-cols-7 gap-4 h-full min-w-[300px]"> 
+      {weekDays.map((day) => {
+        const dayTasks = tasksByDate.get(day.date.toDateString()) || [];
+        dayTasks.sort((a, b) => {
+          const priorities = { Constant: 0, High: 1, Medium: 2, Low: 3 };
+          return priorities[a.priority] - priorities[b.priority];
+        });
 
-          return (
-            <DroppableDay 
-              key={day.dateStr} 
-              dateStr={day.dateStr}
-              isToday={day.isToday}
-            >
-              <div className="text-center pb-2 border-b border-gray-200/60">
-                <div className={cn("font-semibold", day.isToday ? "text-blue-700" : "text-gray-700")}>
-                  {day.label}
-                </div>
-                <div className="text-xs text-gray-500">{day.fullDate}</div>
+        return (
+          <DroppableDay 
+            key={day.dateStr} 
+            dateStr={day.dateStr}
+            isToday={day.isToday}
+          >
+            <div className="text-center pb-2 border-b border-gray-200/60">
+              <div className={cn("font-semibold", day.isToday ? "text-blue-700" : "text-gray-700")}>
+                {day.label}
               </div>
-
-              <div className="flex flex-col gap-2 flex-1">
-                {dayTasks.map((task: any) => {
-                   const isRecurring = !!task.recurrence;
-                   const card = (
-                      <TaskCard
-                        key={`${task.id}-${task._virtualDate || 'single'}`}
-                        task={task}
-                        onToggle={(id) => onToggle(id, task._virtualDate)}
-                        onDelete={onDelete}
-                        onEdit={onEdit}
-                        isRecurringInstance={!!task._virtualDate}
-                      />
-                   );
-
-                   // Only wrap non-recurring tasks in draggable
-                   if (isRecurring) return card;
-                   
-                   return (
-                     <DraggableTask key={task.id} task={task}>
-                       {card}
-                     </DraggableTask>
-                   );
-                })}
-                {dayTasks.length === 0 && (
-                  <div className="flex-1 flex items-center justify-center text-xs text-gray-400 italic">
-                    No tasks
-                  </div>
-                )}
-              </div>
-            </DroppableDay>
-          );
-        })}
-      </div>
-
-      {createPortal(
-        <DragOverlay>
-          {activeTask ? (
-            <div className="opacity-80 rotate-2 cursor-grabbing">
-               <TaskCard
-                  task={activeTask}
-                  onToggle={() => {}}
-                  onDelete={() => {}}
-                  onEdit={() => {}}
-                />
+              <div className="text-xs text-gray-500">{day.fullDate}</div>
             </div>
-          ) : null}
-        </DragOverlay>,
-        document.body
-      )}
-    </DndContext>
+
+            <div className="flex flex-col gap-2 flex-1">
+              {dayTasks.map((task: any) => {
+                 const isRecurring = !!task.recurrence;
+                 const card = (
+                    <TaskCard
+                      key={`${task.id}-${task._virtualDate || 'single'}`}
+                      task={task}
+                      onToggle={(id) => onToggle(id, task._virtualDate)}
+                      onDelete={onDelete}
+                      onEdit={onEdit}
+                      isRecurringInstance={!!task._virtualDate}
+                    />
+                 );
+
+                 // Only wrap non-recurring tasks in draggable
+                 if (isRecurring) return card;
+                 
+                 return (
+                   <DraggableTask key={task.id} task={task}>
+                     {card}
+                   </DraggableTask>
+                 );
+              })}
+              {dayTasks.length === 0 && (
+                <div className="flex-1 flex items-center justify-center text-xs text-gray-400 italic">
+                  No tasks
+                </div>
+              )}
+            </div>
+          </DroppableDay>
+        );
+      })}
+    </div>
   );
 };

@@ -13,7 +13,7 @@ export function useTasks() {
 
   const [projects, setProjects] = useState<string[]>(() => {
     const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : ['Work', 'Personal', 'Shopping'];
+    return stored ? JSON.parse(stored) : [];
   });
 
   useEffect(() => {
@@ -90,9 +90,13 @@ export function useTasks() {
   };
 
   const addProject = (name: string) => {
-    if (!projects.includes(name)) {
+    if (name && !projects.includes(name)) {
       setProjects(prev => [...prev, name]);
     }
+  };
+  
+  const deleteProject = (name: string) => {
+    setProjects(prev => prev.filter(p => p !== name));
   };
 
   return { 
@@ -102,6 +106,7 @@ export function useTasks() {
     toggleTask, 
     updateTask, 
     deleteTask,
-    addProject 
+    addProject,
+    deleteProject
   };
 }
