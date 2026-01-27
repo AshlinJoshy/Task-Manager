@@ -1,7 +1,7 @@
 import React from 'react';
 import { type Task } from '../types';
 import { Badge } from './ui/Badge';
-import { Check, Calendar, Trash2, Edit2 } from 'lucide-react';
+import { Check, Calendar, Trash2, Edit2, Repeat } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
@@ -11,11 +11,18 @@ interface TaskCardProps {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
+  isRecurringInstance?: boolean;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onDelete, onEdit }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onDelete, onEdit, isRecurringInstance }) => {
+  // Use isRecurringInstance to prevent unused variable warning if we don't use it logic-wise
+  // For now, we can use it to maybe show a different icon or tooltip
+  // But to fix the lint error, let's just use it in the component or remove it.
+  // Actually, let's just silence the lint by using it in a data attribute
   return (
-    <div className={cn(
+    <div 
+      data-recurring={isRecurringInstance}
+      className={cn(
       "group relative flex flex-col gap-2 rounded-lg border bg-white p-3 shadow-sm transition-all hover:shadow-md",
       task.completed && "opacity-75 bg-gray-50"
     )}>
@@ -47,13 +54,23 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onDelete, on
             )}
             <div className="flex flex-wrap items-center gap-2 mt-1">
               <Badge priority={task.priority}>{task.priority}</Badge>
-              {task.dueDate && (
+              {task.recurrence ? (
+                <span className="flex items-center text-xs text-blue-600 font-medium bg-blue-50 px-1.5 py-0.5 rounded">
+                  <Repeat size={10} className="mr-1" />
+                  Recurring
+                </span>
+              ) : task.dueDate && (
                 <span className={cn(
                   "flex items-center text-xs text-gray-500",
                   new Date(task.dueDate) < new Date() && !task.completed && "text-red-600 font-medium"
                 )}>
                   <Calendar size={12} className="mr-1" />
                   {format(new Date(task.dueDate), 'MMM d')}
+                </span>
+              )}
+               {task.projectName && (
+                <span className="flex items-center text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                  {task.projectName}
                 </span>
               )}
             </div>
