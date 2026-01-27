@@ -12,6 +12,7 @@ interface TaskListProps {
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
   // onTaskMove handled by parent DndContext now
+  selectedDate: Date;
 }
 
 const DAYS_OF_WEEK = 7;
@@ -59,9 +60,9 @@ const DroppableDay = ({ dateStr, children, isToday }: { dateStr: string; childre
   );
 };
 
-export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, onEdit }) => {
+export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, onEdit, selectedDate }) => {
   const today = new Date();
-  const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday start
+  const startOfCurrentWeek = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Monday start
 
   const weekDays = useMemo(() => {
     return Array.from({ length: DAYS_OF_WEEK }).map((_, i) => {
@@ -70,9 +71,9 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
         date,
         label: format(date, 'EEE'),
         fullDate: format(date, 'MMM d'),
-        isToday: isSameDay(date, today),
+        isToday: isSameDay(date, today), // Still checks against actual today
         dayIndex: getDay(date), // 0-6 (Sun-Sat)
-        dateStr: date.toISOString(), // Use ISO string as ID for consistency
+        dateStr: date.toISOString(), 
       };
     });
   }, [startOfCurrentWeek, today]);

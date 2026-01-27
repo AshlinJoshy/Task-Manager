@@ -4,14 +4,14 @@ import { WeekView } from './components/WeekView';
 import { TaskCard } from './components/TaskCard';
 import { TaskForm } from './components/TaskForm';
 import { Button } from './components/ui/Button';
-import { Plus, LayoutGrid, List, CheckSquare } from 'lucide-react';
+import { Plus, LayoutGrid, List, CheckSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { type Task } from './types';
 import { cn } from './lib/utils';
 import { ScrollArea } from './components/ui/ScrollArea';
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
-import { parseISO, isValid } from 'date-fns';
+import { parseISO, isValid, addWeeks, subWeeks, format, startOfWeek, endOfWeek } from 'date-fns';
 
 // Draggable Wrapper for App-level items (Unscheduled)
 const DraggableAppTask = ({ task, children }: { task: Task; children: React.ReactNode }) => {
@@ -61,6 +61,7 @@ function App() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [view, setView] = useState<'week' | 'list'>('week');
   const [activeDragTask, setActiveDragTask] = useState<Task | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   // Sensors for better touch/mouse handling
   const sensors = useSensors(
@@ -97,6 +98,12 @@ function App() {
   const handleEdit = (task: Task) => {
     setEditingTask(task);
     setIsFormOpen(true);
+  };
+
+  const handleWeekChange = (direction: 'prev' | 'next' | 'today') => {
+    if (direction === 'prev') setSelectedDate(d => subWeeks(d, 1));
+    if (direction === 'next') setSelectedDate(d => addWeeks(d, 1));
+    if (direction === 'today') setSelectedDate(new Date());
   };
 
   const handleFormSubmit = (data: any) => {
@@ -180,26 +187,59 @@ function App() {
                 </button>
               </div>
               
-              <Button onClick={() => { setEditingTask(null); setIsFormOpen(true); }} className="gap-2 hidden sm:flex">
-                <Plus size={18} /> New Task
-              </Button>
-            </div>
+            <Button onClick={() => { setEditingTask(null); setIsFormOpen(true); }} className="gap-2 hidden sm:flex">
+              <Plus size={18} /> New Task
+            </Button>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="flex-1 w-full px-4 py-4 sm:py-6 overflow-hidden">
-          <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-8rem)]">
+      {/* Navigation & Controls */}
+      <div className="bg-white border-b px-4 py-2 flex items-center justify-between sm:justify-center relative">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => handleWeekChange('prev')}>
+            <ChevronLeft size={20} />
+          </Button>
+          
+          <div className="flex items-center gap-2 px-2 min-w-[140px] justify-center">
+            <CalendarIcon size={16} className="text-gray-500" />
+            <span className="text-sm font-semibold text-gray-900">
+              {format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'MMM d')} - {format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'MMM d')}
+            </span>
+            <span className="text-xs text-gray-400 hidden sm:inline-block font-normal ml-1">
+             ({format(selectedDate, 'yyyy')})
+            </span>
+          </div>
+
+          <Button variant="ghost" size="sm" onClick={() => handleWeekChange('next')}>
+            <ChevronRight size={20} />
+          </Button>
+        </div>
+        
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => handleWeekChange('today')}
+          className="absolute right-4 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+        >
+          Today
+        </Button>
+      </div>
+
+      <main className="flex-1 w-full px-4 py-4 sm:py-6 overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-11rem)]">
             
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col gap-6 overflow-hidden min-w-0">
               {view === 'week' ? (
                 <ScrollArea className="flex-1 pb-4">
-                   <WeekView 
-                    tasks={scheduledTasks}
-                    onToggle={toggleTask}
-                    onDelete={deleteTask}
-                    onEdit={handleEdit}
-                  />
+                 <WeekView 
+                  tasks={scheduledTasks}
+                  onToggle={toggleTask}
+                  onDelete={deleteTask}
+                  onEdit={handleEdit}
+                  selectedDate={selectedDate}
+                />
                 </ScrollArea>
               ) : (
                  <ScrollArea className="flex-1">
