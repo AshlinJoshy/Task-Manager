@@ -10,6 +10,19 @@ A modern, robust task management application built with React, TypeScript, and T
 - **Completed History**: Automatically tracks completion dates.
 - **Responsive Design**: Works on desktop and tablet.
 
+## Quick Deployment
+
+The easiest way to deploy this app is using Vercel. It's free and takes about 2 minutes.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FAshlinJoshy%2FTask-Manager)
+
+**Steps:**
+1. Click the "Deploy with Vercel" button above.
+2. Sign in with GitHub.
+3. It will automatically detect the settings.
+4. Click **Deploy**.
+5. Once finished, Vercel will give you a live URL (e.g., `https://task-manager-xyz.vercel.app`).
+
 ## Local Development
 
 1. Clone the repository
@@ -22,9 +35,9 @@ A modern, robust task management application built with React, TypeScript, and T
    npm run dev
    ```
 
-## Deployment
+## Other Deployment Options
 
-### Using Docker (Recommended)
+### Docker
 
 You can run this application on any server with Docker installed.
 
@@ -39,13 +52,3 @@ You can run this application on any server with Docker installed.
    ```
 
 The application will be available at `http://localhost` (or your server's IP).
-
-### Static Hosting
-
-Since this is a static site, you can also deploy it to services like:
-- Vercel
-- Netlify
-- GitHub Pages
-- AWS S3 + CloudFront
-
-Just build the project using `npm run build` and deploy the `dist` folder.
