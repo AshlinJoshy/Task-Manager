@@ -4,7 +4,7 @@ import { WeekView } from './components/WeekView';
 import { TaskCard } from './components/TaskCard';
 import { TaskForm } from './components/TaskForm';
 import { Button } from './components/ui/Button';
-import { Plus, LayoutGrid, List, CheckSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, LayoutGrid, List, CheckSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter } from 'lucide-react';
 import { type Task } from './types';
 import { cn } from './lib/utils';
 import { ScrollArea } from './components/ui/ScrollArea';
@@ -56,12 +56,14 @@ const DroppableUnscheduled = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  const { tasks, addTask, toggleTask, updateTask, deleteTask } = useTasks();
+  const { tasks, projects, addTask, toggleTask, updateTask, deleteTask } = useTasks();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [view, setView] = useState<'week' | 'list'>('week');
   const [activeDragTask, setActiveDragTask] = useState<Task | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
 
   // Sensors for better touch/mouse handling
   const sensors = useSensors(
@@ -78,11 +80,30 @@ function App() {
     })
   );
 
-  const activeTasks = tasks.filter(t => !t.completed);
-  const completedTasks = tasks.filter(t => t.completed);
+  // Filter tasks
+  const filteredTasks = tasks.filter(task => {
+    // Project Filter
+    if (projectFilter !== 'all') {
+      if (projectFilter === 'No Project') {
+        if (task.projectName) return false;
+      } else {
+        if (task.projectName !== projectFilter) return false;
+      }
+    }
+
+    // Priority Filter
+    if (priorityFilter !== 'all') {
+      if (task.priority !== priorityFilter) return false;
+    }
+
+    return true;
+  });
+
+  const activeTasks = filteredTasks.filter(t => !t.completed);
+  const completedTasks = filteredTasks.filter(t => t.completed);
   
   const unscheduledTasks = activeTasks.filter(t => !t.dueDate && !t.recurrence);
-  const scheduledTasks = tasks.filter(t => (t.dueDate || t.recurrence) && !t.completed);
+  const scheduledTasks = filteredTasks.filter(t => (t.dueDate || t.recurrence) && !t.completed);
 
   // Sort unscheduled by priority
   unscheduledTasks.sort((a, b) => {
@@ -195,8 +216,8 @@ function App() {
       </header>
 
       {/* Navigation & Controls */}
-      <div className="bg-white border-b px-4 py-2 flex items-center justify-between sm:justify-center relative">
-        <div className="flex items-center gap-2">
+      <div className="bg-white border-b px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0 relative z-10">
+        <div className="flex items-center gap-2 order-2 sm:order-1">
           <Button variant="ghost" size="sm" onClick={() => handleWeekChange('prev')}>
             <ChevronLeft size={20} />
           </Button>
@@ -215,12 +236,47 @@ function App() {
             <ChevronRight size={20} />
           </Button>
         </div>
+
+        {/* Filters */}
+        <div className="flex items-center gap-2 order-3 sm:order-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
+           <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-md border border-gray-100">
+             <Filter size={14} className="text-gray-400 ml-1" />
+             
+             {/* Project Filter */}
+             <select 
+               className="bg-transparent text-sm border-none focus:ring-0 text-gray-700 font-medium py-1 pr-8 cursor-pointer"
+               value={projectFilter}
+               onChange={(e) => setProjectFilter(e.target.value)}
+             >
+               <option value="all">All Projects</option>
+               <option value="No Project">No Project</option>
+               {projects.map(p => (
+                 <option key={p} value={p}>{p}</option>
+               ))}
+             </select>
+
+             <div className="w-px h-4 bg-gray-300 mx-1" />
+
+             {/* Priority Filter */}
+             <select 
+               className="bg-transparent text-sm border-none focus:ring-0 text-gray-700 font-medium py-1 pr-8 cursor-pointer"
+               value={priorityFilter}
+               onChange={(e) => setPriorityFilter(e.target.value)}
+             >
+               <option value="all">All Priorities</option>
+               <option value="High">High</option>
+               <option value="Constant">Constant</option>
+               <option value="Medium">Medium</option>
+               <option value="Low">Low</option>
+             </select>
+           </div>
+        </div>
         
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={() => handleWeekChange('today')}
-          className="absolute right-4 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+          className="order-1 sm:order-3 sm:absolute sm:right-4 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 w-full sm:w-auto"
         >
           Today
         </Button>
