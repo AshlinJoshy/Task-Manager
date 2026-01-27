@@ -61,23 +61,20 @@ export const ProjectSelect: React.FC<ProjectSelectProps> = ({ value, onChange })
       {isOpen && (
         <div 
           className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg animate-in fade-in zoom-in-95 duration-100"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
         >
           <div className="p-2 border-b border-gray-100 flex gap-1">
             <Input
               value={newProject}
               onChange={(e) => setNewProject(e.target.value)}
               placeholder="New project..."
-              className="h-8 text-sm"
+              className="h-8 text-sm text-gray-900"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  e.stopPropagation(); // Stop enter from submitting form if inside one
                   handleAddProject();
                 }
               }}
-              // Removed autoFocus as it can sometimes cause issues with touch devices or quick re-renders
+              autoFocus
             />
             <Button size="sm" onClick={handleAddProject} disabled={!newProject.trim()} className="px-2">
               <Plus size={16} />
