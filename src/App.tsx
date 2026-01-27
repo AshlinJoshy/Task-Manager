@@ -25,10 +25,11 @@ const DraggableAppTask = ({ task, children }: { task: Task; children: React.Reac
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.3 : 1,
     zIndex: isDragging ? 50 : 'auto',
+    touchAction: 'none', // Crucial for mobile dragging
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="touch-none">
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
       {children}
     </div>
   );
@@ -65,12 +66,12 @@ function App() {
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5, // Reduced distance for easier pickup
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
+        delay: 150, // Reduced delay for faster touch pickup
         tolerance: 5,
       },
     })

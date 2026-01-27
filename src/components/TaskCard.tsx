@@ -1,7 +1,7 @@
 import React from 'react';
 import { type Task } from '../types';
 import { Badge } from './ui/Badge';
-import { Check, Calendar, Trash2, Edit2, Repeat } from 'lucide-react';
+import { Check, Calendar, Trash2, Edit2, Repeat, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
@@ -26,7 +26,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onDelete, on
       "group relative flex flex-col gap-2 rounded-lg border bg-white p-3 shadow-sm transition-all hover:shadow-md",
       task.completed && "opacity-75 bg-gray-50"
     )}>
-      <div className="flex items-start justify-between gap-2">
+      {/* Drag Handle Indicator */}
+      {!task.recurrence && !task.completed && (
+        <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1">
+          <GripVertical size={14} className="text-gray-400" />
+        </div>
+      )}
+
+      <div className="flex items-start justify-between gap-2 pl-2">
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <button
             onClick={() => onToggle(task.id)}

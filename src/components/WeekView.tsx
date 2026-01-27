@@ -28,10 +28,11 @@ const DraggableTask = ({ task, children }: { task: Task; children: React.ReactNo
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.3 : 1,
     zIndex: isDragging ? 50 : 'auto',
+    touchAction: 'none', // Crucial for mobile dragging
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="touch-none">
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
       {children}
     </div>
   );
