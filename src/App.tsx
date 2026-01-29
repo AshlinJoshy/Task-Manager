@@ -4,7 +4,7 @@ import { WeekView } from './components/WeekView';
 import { TaskCard } from './components/TaskCard';
 import { TaskForm } from './components/TaskForm';
 import { Button } from './components/ui/Button';
-import { Plus, LayoutGrid, List, CheckSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, AlertCircle, ArrowRight } from 'lucide-react';
+import { Plus, LayoutGrid, List, CheckSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, AlertCircle, ArrowRight, Trash2 } from 'lucide-react';
 import { type Task } from './types';
 import { cn } from './lib/utils';
 import { ScrollArea } from './components/ui/ScrollArea';
@@ -209,6 +209,14 @@ function App() {
     });
   };
 
+  const clearOverdueTasks = () => {
+    if (confirm('Are you sure you want to delete all overdue tasks? This cannot be undone.')) {
+      overdueTasks.forEach(task => {
+        deleteTask(task.id);
+      });
+    }
+  };
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -253,21 +261,31 @@ function App() {
 
       {/* Overdue Tasks Banner */}
       {overdueTasks.length > 0 && (
-        <div className="bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-between">
+        <div className="bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2 text-red-700 text-sm">
             <AlertCircle size={16} />
             <span className="font-medium">
               {overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''} overdue from previous weeks
             </span>
           </div>
-          <Button 
-            size="sm" 
-            variant="danger" 
-            onClick={moveOverdueToToday}
-            className="h-7 text-xs bg-red-100 hover:bg-red-200 text-red-700 border-none"
-          >
-            Move to Today <ArrowRight size={12} className="ml-1" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={clearOverdueTasks}
+              className="h-7 text-xs text-red-600 hover:text-red-800 hover:bg-red-100"
+            >
+              <Trash2 size={12} className="mr-1" /> Clear All
+            </Button>
+            <Button 
+              size="sm" 
+              variant="danger" 
+              onClick={moveOverdueToToday}
+              className="h-7 text-xs bg-red-100 hover:bg-red-200 text-red-700 border-none"
+            >
+              Move to Today <ArrowRight size={12} className="ml-1" />
+            </Button>
+          </div>
         </div>
       )}
 
