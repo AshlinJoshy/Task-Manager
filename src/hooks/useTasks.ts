@@ -48,13 +48,33 @@ export function useTasks() {
         // If it's a recurring task and we have a specific date
         if (task.recurrence && dateStr) {
           const completions = task.completions || [];
-          const isCompleted = completions.includes(dateStr);
+          
+          // Check if completion exists for this day (comparing just the date part YYYY-MM-DD)
+          // dateStr usually comes in as YYYY-MM-DD from the week view logic, 
+          // but let's make sure we handle it robustly.
+          
+          // We need to store full ISO strings to capture time, but identify them by date
+          const datePart = dateStr.split('T')[0]; // simple YYYY-MM-DD check if it's ISO
+          
+          const existingCompletionIndex = completions.findIndex(c => c.startsWith(datePart));
           
           let newCompletions;
-          if (isCompleted) {
-            newCompletions = completions.filter(d => d !== dateStr);
+          if (existingCompletionIndex >= 0) {
+            // Remove it
+            newCompletions = [...completions];
+            newCompletions.splice(existingCompletionIndex, 1);
           } else {
-            newCompletions = [...completions, dateStr];
+            // Add new completion with current time, but enforcing the correct DATE
+            // If dateStr is just a date, append current time
+            // If it's a date object/ISO, use that.
+            
+            // Construct a new Date object for the completed timestamp
+            const now = new Date();
+            const completionDate = new Date(dateStr);
+            // Set the time of completionDate to now
+            completionDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+            
+            newCompletions = [...completions, completionDate.toISOString()];
           }
 
           return {

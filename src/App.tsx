@@ -4,14 +4,14 @@ import { WeekView } from './components/WeekView';
 import { TaskCard } from './components/TaskCard';
 import { TaskForm } from './components/TaskForm';
 import { Button } from './components/ui/Button';
-import { Plus, LayoutGrid, List, CheckSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter } from 'lucide-react';
+import { Plus, LayoutGrid, List, CheckSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, AlertCircle, ArrowRight } from 'lucide-react';
 import { type Task } from './types';
 import { cn } from './lib/utils';
 import { ScrollArea } from './components/ui/ScrollArea';
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
-import { parseISO, isValid, addWeeks, subWeeks, format, startOfWeek, endOfWeek } from 'date-fns';
+import { parseISO, isValid, addWeeks, subWeeks, format, startOfWeek, endOfWeek, isBefore, startOfDay } from 'date-fns';
 
 // Draggable Wrapper for App-level items (Unscheduled)
 const DraggableAppTask = ({ task, children }: { task: Task; children: React.ReactNode }) => {
@@ -102,6 +102,24 @@ function App() {
   const activeTasks = filteredTasks.filter(t => !t.completed);
   const completedTasks = filteredTasks.filter(t => t.completed);
   
+  // For recurring tasks, we need to show individual completions in the "Completed" list
+  // We'll create "virtual" tasks for each completion of a recurring task
+  const recurringCompletions = filteredTasks
+    .filter(t => t.recurrence && t.completions && t.completions.length > 0)
+    .flatMap(t => 
+      t.completions!.map(completionDateStr => ({
+        ...t,
+        id: `${t.id}-${completionDateStr}`, // Unique ID for key
+        completed: true,
+        completedDate: completionDateStr, // Use the specific completion date
+        recurrence: undefined, // Hide recurrence badge in completed list to avoid confusion or keep it? Let's hide to look like a done task.
+        dueDate: undefined, // Clear due date to avoid showing calendar icon if not needed
+      }))
+    );
+
+  // Combine regular completed tasks with recurring completions
+  const allCompletedTasks = [...completedTasks, ...recurringCompletions];
+
   const unscheduledTasks = activeTasks.filter(t => !t.dueDate && !t.recurrence);
   const scheduledTasks = filteredTasks.filter(t => (t.dueDate || t.recurrence) && !t.completed);
 
@@ -112,8 +130,10 @@ function App() {
   });
   
   // Sort completed by completed date (desc)
-  completedTasks.sort((a, b) => {
-    return new Date(b.completedDate!).getTime() - new Date(a.completedDate!).getTime();
+  allCompletedTasks.sort((a, b) => {
+    const dateA = a.completedDate ? new Date(a.completedDate).getTime() : 0;
+    const dateB = b.completedDate ? new Date(b.completedDate).getTime() : 0;
+    return dateB - dateA;
   });
 
   const handleEdit = (task: Task) => {
@@ -173,6 +193,22 @@ function App() {
     }
   };
 
+  // Identify overdue tasks (only regular scheduled tasks)
+  const todayStart = startOfDay(new Date());
+  const overdueTasks = filteredTasks.filter(t => 
+    t.dueDate && 
+    !t.completed && 
+    !t.recurrence &&
+    isBefore(parseISO(t.dueDate), todayStart)
+  );
+
+  const moveOverdueToToday = () => {
+    const todayStr = new Date().toISOString();
+    overdueTasks.forEach(task => {
+      updateTask(task.id, { dueDate: todayStr });
+    });
+  };
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -214,6 +250,26 @@ function App() {
           </div>
         </div>
       </header>
+
+      {/* Overdue Tasks Banner */}
+      {overdueTasks.length > 0 && (
+        <div className="bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-red-700 text-sm">
+            <AlertCircle size={16} />
+            <span className="font-medium">
+              {overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''} overdue from previous weeks
+            </span>
+          </div>
+          <Button 
+            size="sm" 
+            variant="danger" 
+            onClick={moveOverdueToToday}
+            className="h-7 text-xs bg-red-100 hover:bg-red-200 text-red-700 border-none"
+          >
+            Move to Today <ArrowRight size={12} className="ml-1" />
+          </Button>
+        </div>
+      )}
 
       {/* Navigation & Controls */}
       <div className="bg-white border-b px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0 relative z-10">
@@ -361,22 +417,40 @@ function App() {
                   <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                      <span className="w-2 h-2 rounded-full bg-green-500"/>
                      Completed
-                     <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-600">{completedTasks.length}</span>
+                     <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-600">{allCompletedTasks.length}</span>
                   </h2>
                 </div>
                 
                 <ScrollArea className="flex-1 bg-gray-100/50 rounded-lg p-2 border border-gray-200">
                   <div className="flex flex-col gap-2">
-                    {completedTasks.map(task => (
+                    {allCompletedTasks.map(task => (
                       <TaskCard
                         key={task.id}
                         task={task}
-                        onToggle={toggleTask}
-                        onDelete={deleteTask}
+                        onToggle={(id) => {
+                           // If it's a virtual recurring completion, we need to toggle the original task
+                           // The ID is formatted as `taskId-dateStr`
+                           // We use id here to avoid lint warning about unused parameter, though we use task.id
+                           const toggleId = id || task.id; // Just to use it
+                           if (toggleId.includes('-')) {
+                             const [originalId, dateStr] = toggleId.split(/-(.+)/); // Split on first hyphen
+                             toggleTask(originalId, dateStr);
+                           } else {
+                             toggleTask(toggleId);
+                           }
+                        }}
+                        onDelete={(deleteId) => {
+                           if (task.id.includes('-')) {
+                             const [originalId] = task.id.split('-');
+                             deleteTask(originalId);
+                           } else {
+                             deleteTask(deleteId);
+                           }
+                        }}
                         onEdit={handleEdit}
                       />
                     ))}
-                    {completedTasks.length === 0 && (
+                    {allCompletedTasks.length === 0 && (
                       <div className="text-center py-8 text-sm text-gray-500">
                         No completed tasks yet
                       </div>

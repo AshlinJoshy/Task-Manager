@@ -104,7 +104,8 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
         weekDays.forEach(day => {
           if (task.recurrence!.days.includes(day.dayIndex)) {
              const dateStr = format(day.date, 'yyyy-MM-dd');
-             const isCompletedForDay = task.completions?.includes(dateStr);
+             // Robust check: look for any completion that starts with this date string
+             const isCompletedForDay = task.completions?.some((c: string) => c.startsWith(dateStr));
              
              if (!isCompletedForDay) {
                const instanceTask = {
