@@ -1,7 +1,7 @@
 import React from 'react';
 import { type Task } from '../types';
 import { Badge } from './ui/Badge';
-import { Check, Calendar, Trash2, Edit2, Repeat, GripVertical } from 'lucide-react';
+import { Check, Calendar, Trash2, Edit2, Repeat, GripVertical, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
@@ -78,6 +78,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onDelete, on
                {task.projectName && (
                 <span className="flex items-center text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
                   {task.projectName}
+                </span>
+              )}
+              {task.completed && task.completedDate && (
+                <span className="flex items-center text-xs text-green-600 font-medium">
+                  <Clock size={10} className="mr-1" />
+                  {format(new Date(task.completedDate), 'MMM d, h:mm a')}
                 </span>
               )}
             </div>
