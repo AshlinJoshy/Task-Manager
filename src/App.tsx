@@ -11,7 +11,7 @@ import { ScrollArea } from './components/ui/ScrollArea';
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
-import { parseISO, isValid, addWeeks, subWeeks, format, startOfWeek, endOfWeek, isBefore, startOfDay } from 'date-fns';
+import { parseISO, isValid, addWeeks, subWeeks, format, startOfWeek, endOfWeek, isBefore } from 'date-fns';
 
 // Draggable Wrapper for App-level items (Unscheduled)
 const DraggableAppTask = ({ task, children }: { task: Task; children: React.ReactNode }) => {
@@ -193,13 +193,16 @@ function App() {
     }
   };
 
-  // Identify overdue tasks (only regular scheduled tasks)
-  const todayStart = startOfDay(new Date());
+  // Identify overdue tasks (only regular scheduled tasks from BEFORE current week)
+  // We want to clear/show only tasks that were due BEFORE the start of the current week (Monday)
+  // Tasks due earlier in the current week (e.g. yesterday, if today is Wed) should just stay where they are.
+  
+  const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const overdueTasks = filteredTasks.filter(t => 
     t.dueDate && 
     !t.completed && 
     !t.recurrence &&
-    isBefore(parseISO(t.dueDate), todayStart)
+    isBefore(parseISO(t.dueDate), currentWeekStart)
   );
 
   const moveOverdueToToday = () => {
