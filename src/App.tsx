@@ -394,11 +394,11 @@ function App() {
             </div>
 
             {/* Sidebar - Collapsible or stacked on mobile */}
-            <div className="hidden lg:flex flex-col gap-6 w-80 shrink-0 overflow-hidden">
+            <div className="hidden lg:flex flex-col gap-6 w-80 shrink-0 overflow-hidden h-full">
                
               {/* Unscheduled Tasks */}
-              <div className="flex flex-col gap-3 min-h-[300px] flex-1">
-                <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 flex-1 min-h-0">
+                <div className="flex items-center justify-between shrink-0">
                   <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-orange-400"/>
                     Unscheduled
@@ -406,9 +406,9 @@ function App() {
                   </h2>
                 </div>
                 
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 bg-gray-100/50 rounded-lg border border-gray-200">
                   <DroppableUnscheduled>
-                    <div className="flex flex-col gap-2 min-h-[100px]">
+                    <div className="flex flex-col gap-2 min-h-[100px] p-2">
                       {unscheduledTasks.map(task => (
                         <DraggableAppTask key={task.id} task={task}>
                           <TaskCard
@@ -430,8 +430,8 @@ function App() {
               </div>
 
               {/* Completed Tasks */}
-              <div className="flex flex-col gap-3 flex-1">
-                <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 flex-1 min-h-0">
+                <div className="flex items-center justify-between shrink-0">
                   <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                      <span className="w-2 h-2 rounded-full bg-green-500"/>
                      Completed
@@ -439,8 +439,8 @@ function App() {
                   </h2>
                 </div>
                 
-                <ScrollArea className="flex-1 bg-gray-100/50 rounded-lg p-2 border border-gray-200">
-                  <div className="flex flex-col gap-2">
+                <ScrollArea className="flex-1 bg-gray-100/50 rounded-lg border border-gray-200">
+                  <div className="flex flex-col gap-2 p-2">
                     {allCompletedTasks.map(task => (
                       <TaskCard
                         key={task.id}
