@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { type Task, type Priority } from '../types';
+import { type Task, type Priority, type DurationCategory } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
-import { X, Repeat } from 'lucide-react';
+import { X, Repeat, Clock, Zap } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { ProjectSelect } from './ui/ProjectSelect';
 import { useTasks } from '../hooks/useTasks';
 
 interface TaskFormProps {
@@ -28,6 +29,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialData, onSubmit, onCan
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [priority, setPriority] = useState<Priority>(initialData?.priority || 'Medium');
+  const [durationCategory, setDurationCategory] = useState<DurationCategory>(initialData?.durationCategory || 'short');
   const [dueDate, setDueDate] = useState(initialData?.dueDate || '');
   const [projectName, setProjectName] = useState(initialData?.projectName || '');
   
@@ -47,6 +49,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialData, onSubmit, onCan
       title,
       description,
       priority,
+      durationCategory,
       projectName: projectName || undefined,
     };
 
@@ -104,6 +107,36 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialData, onSubmit, onCan
           />
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+          <div className="flex gap-2 bg-gray-50 p-1 rounded-md border border-gray-200">
+            <button
+              type="button"
+              onClick={() => setDurationCategory('short')}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded text-sm font-medium transition-all",
+                durationCategory === 'short'
+                  ? "bg-white text-blue-600 shadow-sm border border-gray-200"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              )}
+            >
+              <Zap size={14} /> Short Task
+            </button>
+            <button
+              type="button"
+              onClick={() => setDurationCategory('time-consuming')}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded text-sm font-medium transition-all",
+                durationCategory === 'time-consuming'
+                  ? "bg-white text-purple-600 shadow-sm border border-gray-200"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              )}
+            >
+              <Clock size={14} /> Time Consuming
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
@@ -127,19 +160,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialData, onSubmit, onCan
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
-            <div className="relative">
-              <Input
-                list="projects-list"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="Select or type..."
-              />
-              <datalist id="projects-list">
-                {projects.map((p) => (
-                  <option key={p} value={p} />
-                ))}
-              </datalist>
-            </div>
+            <ProjectSelect 
+              value={projectName} 
+              onChange={setProjectName} 
+            />
           </div>
         </div>
 

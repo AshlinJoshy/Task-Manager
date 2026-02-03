@@ -13,7 +13,7 @@ export function useTasks() {
 
   const [projects, setProjects] = useState<string[]>(() => {
     const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : ['Work', 'Personal', 'Shopping'];
+    return stored ? JSON.parse(stored) : [];
   });
 
   useEffect(() => {
@@ -48,13 +48,32 @@ export function useTasks() {
         // If it's a recurring task and we have a specific date
         if (task.recurrence && dateStr) {
           const completions = task.completions || [];
-          const isCompleted = completions.includes(dateStr);
+          
+          // Check if completion exists for this day (comparing just the date part YYYY-MM-DD)
+          const datePart = dateStr.split('T')[0]; 
+          
+          const existingCompletionIndex = completions.findIndex(c => c.startsWith(datePart));
           
           let newCompletions;
-          if (isCompleted) {
-            newCompletions = completions.filter(d => d !== dateStr);
+          if (existingCompletionIndex >= 0) {
+            // Remove it
+            newCompletions = [...completions];
+            newCompletions.splice(existingCompletionIndex, 1);
           } else {
-            newCompletions = [...completions, dateStr];
+            // Add new completion with current time
+            const now = new Date();
+            // dateStr from WeekView is YYYY-MM-DD
+            // We want to store the completion date as YYYY-MM-DDTHH:mm:ss.sssZ
+            // But we must ensure the DATE part matches dateStr.
+            
+            // If dateStr is just YYYY-MM-DD, we can use it to construct the date
+            // If it is ISO, we extract date part.
+            
+            const completionDate = new Date(datePart);
+            // Set time to now
+            completionDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+            
+            newCompletions = [...completions, completionDate.toISOString()];
           }
 
           return {
@@ -90,9 +109,13 @@ export function useTasks() {
   };
 
   const addProject = (name: string) => {
-    if (!projects.includes(name)) {
+    if (name && !projects.includes(name)) {
       setProjects(prev => [...prev, name]);
     }
+  };
+  
+  const deleteProject = (name: string) => {
+    setProjects(prev => prev.filter(p => p !== name));
   };
 
   return { 
@@ -102,6 +125,7 @@ export function useTasks() {
     toggleTask, 
     updateTask, 
     deleteTask,
-    addProject 
+    addProject,
+    deleteProject
   };
 }

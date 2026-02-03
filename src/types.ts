@@ -1,4 +1,5 @@
 export type Priority = 'High' | 'Constant' | 'Medium' | 'Low';
+export type DurationCategory = 'short' | 'time-consuming';
 
 export interface Recurrence {
   type: 'weekly';
@@ -10,6 +11,7 @@ export interface Task {
   title: string;
   description?: string;
   priority: Priority;
+  durationCategory?: DurationCategory; // Default to 'short' if undefined
   dueDate?: string; // ISO date string YYYY-MM-DD
   completed: boolean; // For single tasks
   completedDate?: string; // ISO date string
