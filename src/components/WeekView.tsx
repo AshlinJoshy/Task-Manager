@@ -11,6 +11,7 @@ interface TaskListProps {
   onToggle: (id: string, dateStr?: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
+  onUpdate: (id: string, updates: Partial<Task>) => void;
   selectedDate: Date;
   // onTaskMove is not needed here as dragging is handled by parent context
 }
@@ -80,7 +81,7 @@ interface TaskWithVirtual extends Task {
   _virtualDate?: string;
 }
 
-export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, onEdit, selectedDate }) => {
+export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, onEdit, onUpdate, selectedDate }) => {
   const today = new Date();
   const startOfCurrentWeek = startOfWeek(selectedDate, { weekStartsOn: 1 });
 
@@ -188,6 +189,7 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
                         onToggle={(id) => onToggle(id, task._virtualDate)}
                         onDelete={onDelete}
                         onEdit={onEdit}
+                        onUpdate={onUpdate}
                         isRecurringInstance={!!task._virtualDate}
                       />
                    );
@@ -210,6 +212,7 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
                         onToggle={(id) => onToggle(id, task._virtualDate)}
                         onDelete={onDelete}
                         onEdit={onEdit}
+                        onUpdate={onUpdate}
                         isRecurringInstance={!!task._virtualDate}
                       />
                    );

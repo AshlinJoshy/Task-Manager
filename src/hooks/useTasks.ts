@@ -31,6 +31,7 @@ export function useTasks() {
       createdAt: new Date().toISOString(),
       completed: false,
       completions: [],
+      progress: 0,
     };
     setTasks((prev) => [...prev, newTask]);
 
@@ -88,6 +89,7 @@ export function useTasks() {
           ...task,
           completed: isCompleted,
           completedDate: isCompleted ? new Date().toISOString() : undefined,
+          progress: isCompleted ? 100 : task.progress, // Max out progress if completed
         };
       })
     );

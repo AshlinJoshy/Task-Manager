@@ -386,6 +386,7 @@ function App() {
                   onToggle={toggleTask}
                   onDelete={deleteTask}
                   onEdit={handleEdit}
+                  onUpdate={updateTask}
                   selectedDate={selectedDate}
                 />
                 </ScrollArea>
@@ -399,6 +400,7 @@ function App() {
                         onToggle={toggleTask}
                         onDelete={deleteTask}
                         onEdit={handleEdit}
+                        onUpdate={updateTask}
                       />
                     ))}
                     {scheduledTasks.length === 0 && (
@@ -434,6 +436,7 @@ function App() {
                             onToggle={toggleTask}
                             onDelete={deleteTask}
                             onEdit={handleEdit}
+                            onUpdate={updateTask}
                           />
                         </DraggableAppTask>
                       ))}
@@ -481,6 +484,7 @@ function App() {
                            }
                         }}
                         onEdit={handleEdit}
+                        onUpdate={updateTask}
                       />
                     ))}
                     {allCompletedTasks.length === 0 && (

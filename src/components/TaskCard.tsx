@@ -11,10 +11,11 @@ interface TaskCardProps {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
+  onUpdate?: (id: string, updates: Partial<Task>) => void; // Made optional for now to avoid breaking build
   isRecurringInstance?: boolean;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onDelete, onEdit, isRecurringInstance }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onDelete, onEdit, onUpdate, isRecurringInstance }) => {
   // Use isRecurringInstance to prevent unused variable warning if we don't use it logic-wise
   // For now, we can use it to maybe show a different icon or tooltip
   // But to fix the lint error, let's just use it in the component or remove it.
@@ -74,6 +75,43 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onDelete, on
                 </span>
               )}
             </div>
+
+            {/* Progress Bar */}
+            {!task.completed && !task.recurrence && onUpdate && (
+              <div 
+                className="mt-2 flex items-center gap-2"
+                onClick={(e) => e.stopPropagation()} 
+                onMouseDown={(e) => e.stopPropagation()} 
+                onTouchStart={(e) => e.stopPropagation()}
+              >
+                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden relative group/progress">
+                  <div 
+                    className={cn(
+                      "absolute top-0 left-0 h-full transition-all duration-300 rounded-full",
+                      task.progress === 100 ? "bg-green-500" : "bg-blue-500"
+                    )}
+                    style={{ width: `${task.progress || 0}%` }}
+                  />
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="10"
+                    value={task.progress || 0}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      onUpdate(task.id, { 
+                        progress: val,
+                      });
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                </div>
+                <span className="text-[10px] text-gray-400 w-6 text-right tabular-nums">
+                  {task.progress || 0}%
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
