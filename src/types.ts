@@ -13,6 +13,7 @@ export interface Task {
   dueDate?: string; // ISO date string YYYY-MM-DD
   completed: boolean; // For single tasks
   completedDate?: string; // ISO date string
+  order?: number; // Custom ordering within priority segments
   
   // New fields for recurrence
   recurrence?: Recurrence;

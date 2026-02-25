@@ -13,12 +13,17 @@ import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
 import { parseISO, isValid, addWeeks, subWeeks, format, startOfWeek, endOfWeek, isBefore } from 'date-fns';
 
-// Draggable Wrapper for App-level items (Unscheduled)
+// Draggable and Droppable Wrapper for App-level items (Unscheduled)
 const DraggableAppTask = ({ task, children }: { task: Task; children: React.ReactNode }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef: setDraggableRef, transform, isDragging } = useDraggable({
     id: task.id,
     data: { task },
     disabled: !!task.recurrence || !!task.completed,
+  });
+
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: `unscheduled-task-${task.id}`,
+    data: { type: 'task', task },
   });
 
   const style = {
@@ -28,8 +33,19 @@ const DraggableAppTask = ({ task, children }: { task: Task; children: React.Reac
     touchAction: 'none', // Crucial for mobile dragging
   };
 
+  const setRefs = (node: HTMLElement | null) => {
+    setDraggableRef(node);
+    setDroppableRef(node);
+  };
+
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+    <div 
+      ref={setRefs} 
+      style={style} 
+      {...listeners} 
+      {...attributes}
+      className={cn(isOver && "ring-2 ring-blue-400 ring-offset-1 rounded-lg transition-all")}
+    >
       {children}
     </div>
   );
@@ -109,7 +125,7 @@ function App() {
     .flatMap(t => 
       t.completions!.map(completionDateStr => ({
         ...t,
-        id: `${t.id}-${completionDateStr}`, // Unique ID for key
+        id: `${t.id}__COMPLETED__${completionDateStr}`, // Unique ID for key
         completed: true,
         completedDate: completionDateStr, // Use the specific completion date
         recurrence: undefined, // Hide recurrence badge in completed list to avoid confusion or keep it? Let's hide to look like a done task.
@@ -123,10 +139,27 @@ function App() {
   const unscheduledTasks = activeTasks.filter(t => !t.dueDate && !t.recurrence);
   const scheduledTasks = filteredTasks.filter(t => (t.dueDate || t.recurrence) && !t.completed);
 
-  // Sort unscheduled by priority
+  // Sort scheduled tasks by date, then priority, then order
+  scheduledTasks.sort((a, b) => {
+    const dateA = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+    const dateB = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+    if (dateA !== dateB) return dateA - dateB;
+
+    const priorities = { Constant: 0, High: 1, Medium: 2, Low: 3 };
+    if (priorities[a.priority] !== priorities[b.priority]) {
+      return priorities[a.priority] - priorities[b.priority];
+    }
+    
+    return (a.order || 0) - (b.order || 0);
+  });
+
+  // Sort unscheduled by priority then order
   unscheduledTasks.sort((a, b) => {
     const priorities = { Constant: 0, High: 1, Medium: 2, Low: 3 };
-    return priorities[a.priority] - priorities[b.priority];
+    if (priorities[a.priority] !== priorities[b.priority]) {
+      return priorities[a.priority] - priorities[b.priority];
+    }
+    return (a.order || 0) - (b.order || 0);
   });
   
   // Sort completed by completed date (desc)
@@ -172,6 +205,83 @@ function App() {
     
     if (!task || task.recurrence) return; // Recurring tasks cannot be dragged
 
+    const overId = String(over.id);
+
+    // Handle dropping on another task
+    if (overId.startsWith('task-') || overId.startsWith('unscheduled-task-')) {
+      const overTaskId = overId.replace('task-', '').replace('unscheduled-task-', '');
+      const overTask = tasks.find(t => t.id === overTaskId);
+      
+      if (!overTask) return;
+
+      const updates: Partial<Task> = {};
+      
+      // If dropped on a different day/unscheduled, update dueDate
+      if (task.dueDate !== overTask.dueDate) {
+        updates.dueDate = overTask.dueDate;
+      }
+
+      // If they are in the same priority segment, update order
+      if (task.priority === overTask.priority) {
+        // Get all tasks in this target list (same due date, same priority)
+        let targetTasks = tasks
+          .filter(t => 
+            t.dueDate === overTask.dueDate && 
+            t.priority === task.priority && 
+            !t.completed &&
+            !t.recurrence
+          )
+          .map((t, i) => ({
+            ...t,
+            order: t.order !== undefined ? t.order : i * 1000
+          }));
+
+        // Sort them by current order
+        targetTasks.sort((a, b) => a.order - b.order);
+
+        const activeIndex = targetTasks.findIndex(t => t.id === task.id);
+        const overIndex = targetTasks.findIndex(t => t.id === overTask.id);
+
+        const targetOverTask = targetTasks[overIndex];
+        let newOrder = targetOverTask.order;
+
+        if (activeIndex === -1) {
+          // Task came from a different list. Place it right after the overTask.
+          const nextTask = targetTasks[overIndex + 1];
+          if (nextTask) {
+            newOrder = (targetOverTask.order + nextTask.order) / 2;
+          } else {
+            newOrder = targetOverTask.order + 1000;
+          }
+        } else {
+          // Task is in the same list. 
+          if (activeIndex < overIndex) {
+            // Dragged down
+            const nextTask = targetTasks[overIndex + 1];
+            if (nextTask) {
+              newOrder = (targetOverTask.order + nextTask.order) / 2;
+            } else {
+              newOrder = targetOverTask.order + 1000;
+            }
+          } else if (activeIndex > overIndex) {
+            // Dragged up
+            const prevTask = targetTasks[overIndex - 1];
+            if (prevTask) {
+              newOrder = (targetOverTask.order + prevTask.order) / 2;
+            } else {
+              newOrder = targetOverTask.order - 1000;
+            }
+          }
+        }
+        updates.order = newOrder;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        updateTask(taskId, updates);
+      }
+      return;
+    }
+
     // Drop on Unscheduled Zone
     if (over.id === 'unscheduled-zone') {
        if (task.dueDate) {
@@ -186,7 +296,6 @@ function App() {
     const newDate = parseISO(newDateStr);
 
     if (isValid(newDate)) {
-      // Check if date actually changed to avoid unnecessary updates
       if (task.dueDate !== newDateStr) {
         updateTask(taskId, { dueDate: newDateStr });
       }
@@ -450,19 +559,18 @@ function App() {
                         task={task}
                         onToggle={(id) => {
                            // If it's a virtual recurring completion, we need to toggle the original task
-                           // The ID is formatted as `taskId-dateStr`
-                           // We use id here to avoid lint warning about unused parameter, though we use task.id
-                           const toggleId = id || task.id; // Just to use it
-                           if (toggleId.includes('-')) {
-                             const [originalId, dateStr] = toggleId.split(/-(.+)/); // Split on first hyphen
+                           // The ID is formatted as `taskId__COMPLETED__dateStr`
+                           const toggleId = id || task.id;
+                           if (toggleId.includes('__COMPLETED__')) {
+                             const [originalId, dateStr] = toggleId.split('__COMPLETED__');
                              toggleTask(originalId, dateStr);
                            } else {
                              toggleTask(toggleId);
                            }
                         }}
                         onDelete={(deleteId) => {
-                           if (task.id.includes('-')) {
-                             const [originalId] = task.id.split('-');
+                           if (task.id.includes('__COMPLETED__')) {
+                             const [originalId] = task.id.split('__COMPLETED__');
                              deleteTask(originalId);
                            } else {
                              deleteTask(deleteId);

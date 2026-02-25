@@ -17,12 +17,17 @@ interface TaskListProps {
 
 const DAYS_OF_WEEK = 7;
 
-// Draggable Wrapper
+// Draggable and Droppable Wrapper for reordering
 const DraggableTask = ({ task, children }: { task: Task; children: React.ReactNode }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef: setDraggableRef, transform, isDragging } = useDraggable({
     id: task.id,
     data: { task },
     disabled: !!task.recurrence || !!task.completed, // Disable for recurring or completed tasks
+  });
+
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: `task-${task.id}`,
+    data: { type: 'task', task },
   });
 
   const style = {
@@ -32,8 +37,19 @@ const DraggableTask = ({ task, children }: { task: Task; children: React.ReactNo
     touchAction: 'none', // Crucial for mobile dragging
   };
 
+  const setRefs = (node: HTMLElement | null) => {
+    setDraggableRef(node);
+    setDroppableRef(node);
+  };
+
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+    <div 
+      ref={setRefs} 
+      style={style} 
+      {...listeners} 
+      {...attributes}
+      className={cn(isOver && "ring-2 ring-blue-400 ring-offset-1 rounded-lg transition-all")}
+    >
       {children}
     </div>
   );
@@ -129,7 +145,10 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
         const dayTasks = tasksByDate.get(day.date.toDateString()) || [];
         dayTasks.sort((a, b) => {
           const priorities = { Constant: 0, High: 1, Medium: 2, Low: 3 };
-          return priorities[a.priority] - priorities[b.priority];
+          if (priorities[a.priority] !== priorities[b.priority]) {
+            return priorities[a.priority] - priorities[b.priority];
+          }
+          return (a.order || 0) - (b.order || 0);
         });
 
         return (

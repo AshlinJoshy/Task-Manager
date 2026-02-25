@@ -31,6 +31,7 @@ export function useTasks() {
       createdAt: new Date().toISOString(),
       completed: false,
       completions: [],
+      order: Date.now(),
     };
     setTasks((prev) => [...prev, newTask]);
 
