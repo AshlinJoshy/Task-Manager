@@ -56,19 +56,20 @@ const DraggableTask = ({ task, children }: { task: Task; children: React.ReactNo
 };
 
 // Droppable Wrapper
-const DroppableDay = ({ dateStr, children, isToday }: { dateStr: string; children: React.ReactNode; isToday: boolean }) => {
+const DroppableDay = ({ id, isToday, children, className }: { id: string; isToday: boolean; children: React.ReactNode; className?: string }) => {
   const { setNodeRef, isOver } = useDroppable({
-    id: dateStr,
-    data: { type: 'day', dateStr },
+    id,
+    data: { type: 'day', dateStr: id.split('|')[0] },
   });
 
   return (
     <div 
       ref={setNodeRef}
       className={cn(
-        "flex flex-col gap-3 p-3 rounded-lg border min-h-[300px] transition-colors",
-        isToday ? "bg-blue-50/50 border-blue-200" : "bg-gray-50/50 border-gray-200",
-        isOver && "bg-blue-100 border-blue-300 ring-2 ring-blue-200"
+        "flex flex-col gap-2 p-2 rounded-lg border min-h-[120px] transition-colors",
+        isToday ? "bg-blue-50/30 border-blue-200" : "bg-gray-50/50 border-gray-200",
+        isOver && "bg-blue-100 border-blue-300 ring-2 ring-blue-200",
+        className
       )}
     >
       {children}
@@ -144,6 +145,10 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
       {weekDays.map((day) => {
         const dayTasks = tasksByDate.get(day.date.toDateString()) || [];
         dayTasks.sort((a, b) => {
+          const durationA = a.duration === 'Time Consuming' ? 1 : 0;
+          const durationB = b.duration === 'Time Consuming' ? 1 : 0;
+          if (durationA !== durationB) return durationA - durationB;
+
           const priorities = { Constant: 0, High: 1, Medium: 2, Low: 3 };
           if (priorities[a.priority] !== priorities[b.priority]) {
             return priorities[a.priority] - priorities[b.priority];
@@ -151,49 +156,71 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
           return (a.order || 0) - (b.order || 0);
         });
 
+        const shortTasks = dayTasks.filter(t => t.duration === 'Short Task' || !t.duration);
+        const timeConsumingTasks = dayTasks.filter(t => t.duration === 'Time Consuming');
+
+        const renderTasks = (tasksToRender: Task[]) => {
+          if (tasksToRender.length === 0) return null;
+          
+          return tasksToRender.map((task: any) => {
+             const isRecurring = !!task.recurrence;
+             const card = (
+                <TaskCard
+                  key={`${task.id}-${task._virtualDate || 'single'}`}
+                  task={task}
+                  onToggle={(id) => onToggle(id, task._virtualDate)}
+                  onDelete={onDelete}
+                  onEdit={onEdit}
+                  isRecurringInstance={!!task._virtualDate}
+                />
+             );
+
+             // Only wrap non-recurring tasks in draggable
+             if (isRecurring) return card;
+             
+             return (
+               <DraggableTask key={task.id} task={task}>
+                 {card}
+               </DraggableTask>
+             );
+          });
+        };
+
         return (
-          <DroppableDay 
-            key={day.dateStr} 
-            dateStr={day.dateStr}
-            isToday={day.isToday}
-          >
-            <div className="text-center pb-2 border-b border-gray-200/60">
+          <div key={day.dateStr} className="flex flex-col h-full bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+            <div className="text-center p-2 border-b border-gray-100 bg-gray-50/50">
               <div className={cn("font-semibold", day.isToday ? "text-blue-700" : "text-gray-700")}>
                 {day.label}
               </div>
               <div className="text-xs text-gray-500">{day.fullDate}</div>
             </div>
 
-            <div className="flex flex-col gap-2 flex-1">
-              {dayTasks.map((task: any) => {
-                 const isRecurring = !!task.recurrence;
-                 const card = (
-                    <TaskCard
-                      key={`${task.id}-${task._virtualDate || 'single'}`}
-                      task={task}
-                      onToggle={(id) => onToggle(id, task._virtualDate)}
-                      onDelete={onDelete}
-                      onEdit={onEdit}
-                      isRecurringInstance={!!task._virtualDate}
-                    />
-                 );
-
-                 // Only wrap non-recurring tasks in draggable
-                 if (isRecurring) return card;
-                 
-                 return (
-                   <DraggableTask key={task.id} task={task}>
-                     {card}
-                   </DraggableTask>
-                 );
-              })}
-              {dayTasks.length === 0 && (
-                <div className="flex-1 flex items-center justify-center text-xs text-gray-400 italic">
-                  No tasks
-                </div>
-              )}
+            <div className="flex flex-col flex-1 p-2 gap-3 overflow-y-auto">
+              <DroppableDay 
+                id={`${day.dateStr}|Short Task`} 
+                isToday={day.isToday}
+                className="flex-1 min-h-[150px]"
+              >
+                <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1 px-1 sticky top-0 bg-inherit z-10">Short Tasks</div>
+                {renderTasks(shortTasks)}
+                {shortTasks.length === 0 && (
+                  <div className="text-xs text-gray-300 italic px-2">No short tasks</div>
+                )}
+              </DroppableDay>
+              
+              <DroppableDay 
+                id={`${day.dateStr}|Time Consuming`} 
+                isToday={day.isToday}
+                className="flex-1 min-h-[150px]"
+              >
+                <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider mb-1 px-1 sticky top-0 bg-inherit z-10">Time Consuming</div>
+                {renderTasks(timeConsumingTasks)}
+                {timeConsumingTasks.length === 0 && (
+                  <div className="text-xs text-gray-300 italic px-2">No time consuming tasks</div>
+                )}
+              </DroppableDay>
             </div>
-          </DroppableDay>
+          </div>
         );
       })}
     </div>

@@ -80,6 +80,16 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onDelete, on
                   {task.projectName}
                 </span>
               )}
+              {task.duration && (
+                <span className={cn(
+                  "flex items-center text-[10px] px-1.5 py-0.5 rounded border uppercase font-bold tracking-wider",
+                  task.duration === 'Time Consuming' 
+                    ? "bg-purple-50 text-purple-600 border-purple-200" 
+                    : "bg-blue-50 text-blue-600 border-blue-200"
+                )}>
+                  {task.duration}
+                </span>
+              )}
               {task.completed && task.completedDate && (
                 <span className="flex items-center text-xs text-green-600 font-medium">
                   <Clock size={10} className="mr-1" />

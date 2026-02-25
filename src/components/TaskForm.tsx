@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { type Task, type Priority } from '../types';
+import { type Task, type Priority, type TaskDuration } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
@@ -27,6 +27,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialData, onSubmit, onCan
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [priority, setPriority] = useState<Priority>(initialData?.priority || 'Medium');
+  const [duration, setDuration] = useState<TaskDuration>(initialData?.duration || 'Short Task');
   const [dueDate, setDueDate] = useState(initialData?.dueDate || '');
   const [projectName, setProjectName] = useState(initialData?.projectName || '');
   
@@ -43,6 +44,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialData, onSubmit, onCan
       title,
       description,
       priority,
+      duration,
       projectName: projectName || undefined,
     };
 
@@ -121,6 +123,19 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialData, onSubmit, onCan
             </Select>
           </div>
           
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+            <Select 
+              value={duration} 
+              onChange={(e) => setDuration(e.target.value as TaskDuration)}
+            >
+              <option value="Short Task">Short Task</option>
+              <option value="Time Consuming">Time Consuming</option>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
             <ProjectSelect 

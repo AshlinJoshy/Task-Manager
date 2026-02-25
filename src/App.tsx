@@ -139,11 +139,15 @@ function App() {
   const unscheduledTasks = activeTasks.filter(t => !t.dueDate && !t.recurrence);
   const scheduledTasks = filteredTasks.filter(t => (t.dueDate || t.recurrence) && !t.completed);
 
-  // Sort scheduled tasks by date, then priority, then order
+  // Sort scheduled tasks by date, then duration, then priority, then order
   scheduledTasks.sort((a, b) => {
     const dateA = a.dueDate ? new Date(a.dueDate).getTime() : 0;
     const dateB = b.dueDate ? new Date(b.dueDate).getTime() : 0;
     if (dateA !== dateB) return dateA - dateB;
+
+    const durationA = a.duration === 'Time Consuming' ? 1 : 0;
+    const durationB = b.duration === 'Time Consuming' ? 1 : 0;
+    if (durationA !== durationB) return durationA - durationB;
 
     const priorities = { Constant: 0, High: 1, Medium: 2, Low: 3 };
     if (priorities[a.priority] !== priorities[b.priority]) {
@@ -155,6 +159,11 @@ function App() {
 
   // Sort unscheduled by priority then order
   unscheduledTasks.sort((a, b) => {
+    // Sort by duration first to separate short vs time consuming
+    const durationA = a.duration === 'Time Consuming' ? 1 : 0;
+    const durationB = b.duration === 'Time Consuming' ? 1 : 0;
+    if (durationA !== durationB) return durationA - durationB;
+
     const priorities = { Constant: 0, High: 1, Medium: 2, Low: 3 };
     if (priorities[a.priority] !== priorities[b.priority]) {
       return priorities[a.priority] - priorities[b.priority];
@@ -221,15 +230,25 @@ function App() {
         updates.dueDate = overTask.dueDate;
       }
 
+      // If dragged onto a task with a different duration, update duration
+      if (task.duration !== overTask.duration) {
+        updates.duration = overTask.duration;
+      }
+
       // If they are in the same priority segment, update order
+      // We should also check duration here because they are visually separated by duration
       if (task.priority === overTask.priority) {
-        // Get all tasks in this target list (same due date, same priority)
+        // Get all tasks in this target list (same due date, same priority, same target duration)
+        const targetDuration = overTask.duration || 'Short Task';
+        
         let targetTasks = tasks
           .filter(t => 
             t.dueDate === overTask.dueDate && 
             t.priority === task.priority && 
+            (t.duration || 'Short Task') === targetDuration &&
             !t.completed &&
-            !t.recurrence
+            !t.recurrence &&
+            t.id !== task.id // Exclude the active task from target list for proper insert calculations
           )
           .map((t, i) => ({
             ...t,
@@ -239,41 +258,46 @@ function App() {
         // Sort them by current order
         targetTasks.sort((a, b) => a.order - b.order);
 
-        const activeIndex = targetTasks.findIndex(t => t.id === task.id);
         const overIndex = targetTasks.findIndex(t => t.id === overTask.id);
-
         const targetOverTask = targetTasks[overIndex];
-        let newOrder = targetOverTask.order;
+        
+        if (targetOverTask) {
+          let newOrder = targetOverTask.order;
 
-        if (activeIndex === -1) {
-          // Task came from a different list. Place it right after the overTask.
-          const nextTask = targetTasks[overIndex + 1];
-          if (nextTask) {
-            newOrder = (targetOverTask.order + nextTask.order) / 2;
-          } else {
-            newOrder = targetOverTask.order + 1000;
-          }
-        } else {
-          // Task is in the same list. 
-          if (activeIndex < overIndex) {
-            // Dragged down
+          // Dragged into a different section or from unscheduled
+          if (task.duration !== targetDuration || task.dueDate !== overTask.dueDate) {
+            // Place it right after the overTask.
             const nextTask = targetTasks[overIndex + 1];
             if (nextTask) {
               newOrder = (targetOverTask.order + nextTask.order) / 2;
             } else {
               newOrder = targetOverTask.order + 1000;
             }
-          } else if (activeIndex > overIndex) {
-            // Dragged up
-            const prevTask = targetTasks[overIndex - 1];
-            if (prevTask) {
-              newOrder = (targetOverTask.order + prevTask.order) / 2;
+          } else {
+            // Task is in the same list originally. Need to find original index to know if dragged up or down.
+            // But we excluded it from targetTasks. So we just need to compare original order.
+            const originalOrder = task.order || 0;
+            
+            if (originalOrder < targetOverTask.order) {
+              // Dragged down
+              const nextTask = targetTasks[overIndex + 1];
+              if (nextTask) {
+                newOrder = (targetOverTask.order + nextTask.order) / 2;
+              } else {
+                newOrder = targetOverTask.order + 1000;
+              }
             } else {
-              newOrder = targetOverTask.order - 1000;
+              // Dragged up
+              const prevTask = targetTasks[overIndex - 1];
+              if (prevTask) {
+                newOrder = (targetOverTask.order + prevTask.order) / 2;
+              } else {
+                newOrder = targetOverTask.order - 1000;
+              }
             }
           }
+          updates.order = newOrder;
         }
-        updates.order = newOrder;
       }
 
       if (Object.keys(updates).length > 0) {
@@ -291,13 +315,24 @@ function App() {
     }
 
     // Drop on a specific Date
-    // over.id should be an ISO date string from WeekView's droppable
-    const newDateStr = over.id as string;
+    // over.id should be an ISO date string from WeekView's droppable, e.g. "YYYY-MM-DD|Short Task"
+    const overIdStr = over.id as string;
+    const [newDateStr, targetDuration] = overIdStr.split('|');
     const newDate = parseISO(newDateStr);
 
     if (isValid(newDate)) {
+      const updates: Partial<Task> = {};
+      
       if (task.dueDate !== newDateStr) {
-        updateTask(taskId, { dueDate: newDateStr });
+        updates.dueDate = newDateStr;
+      }
+      
+      if (targetDuration && targetDuration !== task.duration && (targetDuration === 'Short Task' || targetDuration === 'Time Consuming')) {
+        updates.duration = targetDuration;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        updateTask(taskId, updates);
       }
     }
   };
@@ -520,8 +555,9 @@ function App() {
                 
                 <ScrollArea className="flex-1 bg-gray-100/50 rounded-lg border border-gray-200">
                   <DroppableUnscheduled>
-                    <div className="flex flex-col gap-2 min-h-[100px] p-2">
-                      {unscheduledTasks.map(task => (
+                    <div className="flex flex-col gap-2 p-2">
+                      <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1 px-1 mt-2">Short Tasks</div>
+                      {unscheduledTasks.filter(t => t.duration === 'Short Task' || !t.duration).map(task => (
                         <DraggableAppTask key={task.id} task={task}>
                           <TaskCard
                             task={task}
@@ -531,6 +567,25 @@ function App() {
                           />
                         </DraggableAppTask>
                       ))}
+                      {unscheduledTasks.filter(t => t.duration === 'Short Task' || !t.duration).length === 0 && (
+                        <div className="text-xs text-gray-400 italic px-2 mb-2">No short tasks</div>
+                      )}
+
+                      <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider mb-1 px-1 mt-4 pt-2 border-t border-dashed border-gray-300">Time Consuming</div>
+                      {unscheduledTasks.filter(t => t.duration === 'Time Consuming').map(task => (
+                        <DraggableAppTask key={task.id} task={task}>
+                          <TaskCard
+                            task={task}
+                            onToggle={toggleTask}
+                            onDelete={deleteTask}
+                            onEdit={handleEdit}
+                          />
+                        </DraggableAppTask>
+                      ))}
+                      {unscheduledTasks.filter(t => t.duration === 'Time Consuming').length === 0 && (
+                        <div className="text-xs text-gray-400 italic px-2 mb-2">No time consuming tasks</div>
+                      )}
+                      
                       {unscheduledTasks.length === 0 && (
                         <div className="text-center py-8 text-sm text-gray-500">
                           No unscheduled tasks
