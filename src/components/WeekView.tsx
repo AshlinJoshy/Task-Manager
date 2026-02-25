@@ -199,9 +199,9 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
               <DroppableDay 
                 id={`${day.dateStr}|Short Task`} 
                 isToday={day.isToday}
-                className="flex-1 min-h-[150px]"
+                className="grow shrink-0 min-h-[150px]"
               >
-                <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1 px-1 sticky top-0 bg-inherit z-10">Short Tasks</div>
+                <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1 px-1 sticky top-0 bg-white/80 backdrop-blur-sm z-10 py-1 rounded">Short Tasks</div>
                 {renderTasks(shortTasks)}
                 {shortTasks.length === 0 && (
                   <div className="text-xs text-gray-300 italic px-2">No short tasks</div>
@@ -211,9 +211,9 @@ export const WeekView: React.FC<TaskListProps> = ({ tasks, onToggle, onDelete, o
               <DroppableDay 
                 id={`${day.dateStr}|Time Consuming`} 
                 isToday={day.isToday}
-                className="flex-1 min-h-[150px]"
+                className="grow shrink-0 min-h-[150px]"
               >
-                <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider mb-1 px-1 sticky top-0 bg-inherit z-10">Time Consuming</div>
+                <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider mb-1 px-1 sticky top-0 bg-white/80 backdrop-blur-sm z-10 py-1 rounded">Time Consuming</div>
                 {renderTasks(timeConsumingTasks)}
                 {timeConsumingTasks.length === 0 && (
                   <div className="text-xs text-gray-300 italic px-2">No time consuming tasks</div>
